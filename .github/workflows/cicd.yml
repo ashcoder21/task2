@@ -1,0 +1,36 @@
+name: CICD
+
+on : 
+    push :
+        branches: [deploy-to-ec2]
+
+jobs:
+    build:
+        runs-on: [ubuntu-latest]
+        steps:
+            - name: Checkout source
+              uses: actions/checkout@v3
+            - name: Setup Java
+              uses: actions/setup-java@v3
+              with:
+                distribution: 'temurin'
+                java-version: '17'
+            - name: Build Project
+              run: mvn clean install -DskipTests=True
+            - name: Login To Dockerhub
+              run: docker login -u ${{secrets.DOCKER_USERNAME}} -p ${{secrets.DOCKER_PASSWORD}}
+            - name: Build Docker Image
+              run : docker build -t ashdock21/spring.
+            - name : Push image to dockerhub
+              run: docker push ashdock21/spring-example:latest
+
+    deploy:
+        needs: build
+        runs-on : [aws-ec2]
+        steps:
+            - name: pull image from dockerhub
+              run : docker pull ashdock21/spring:latest
+            - name: delete old container 
+              run : docker rm -f spring-example-container
+            - name: run docker container
+              run: docker run -d -p 8080:8080 --name spring-example-container ashdock21/spring:latest
